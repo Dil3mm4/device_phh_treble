@@ -170,11 +170,26 @@ changeKeylayout() {
         changed=true
     fi
 
+    if getprop ro.vendor.build.fingerprint |grep -q -e nubia/NX659;then
+        cp /system/phh/nubia-nubia_synaptics_dsx.kl /mnt/phh/keylayout/nubia_synaptics_dsx.kl
+        chmod 0644 /mnt/phh/keylayout/nubia_synaptics_dsx.kl
+        changed=true
+    fi
+
     if [ "$changed" = true ]; then
         mount -o bind /mnt/phh/keylayout /system/usr/keylayout
         restorecon -R /system/usr/keylayout
     fi
 }
+
+if [ "$(getprop ro.product.vendor.manufacturer)" = motorola ] && getprop ro.vendor.product.name |grep -qE '^lima';then
+    for l in lib lib64;do
+        for f in mt6771 lima;do
+            mount /system/phh/empty /vendor/$l/hw/keystore.$f.so
+        done
+    done
+    setprop persist.sys.overlay.devinputjack true
+fi
 
 if mount -o remount,rw /system; then
     resize2fs "$(grep ' /system ' /proc/mounts | cut -d ' ' -f 1)" || true
@@ -581,7 +596,7 @@ fi
 for abi in "" 64;do
     f=/vendor/lib$abi/libstagefright_foundation.so
     if [ -f "$f" ];then
-        for vndk in 26 27 28;do
+        for vndk in 26 27 28 29;do
             mount "$f" /system/lib$abi/vndk-$vndk/libstagefright_foundation.so
         done
     fi
@@ -688,7 +703,7 @@ if getprop ro.build.overlay.deviceid |grep -qE '^RMX';then
     fi
 fi
 
-if [ "$vndk" -le 28 ] && getprop ro.hardware |grep -q -e mt6761 -e mt6763 -e mt6765 -e mt6785 -e mt8768 -e mt6779;then
+if [ "$vndk" -le 28 ] && getprop ro.hardware |grep -q -e mt6761 -e mt6763 -e mt6765 -e mt6785 -e mt8768 -e mt6779 -e mt6771 -e mt8766;then
     setprop debug.stagefright.ccodec 0
 fi
 
@@ -753,3 +768,10 @@ if getprop ro.vendor.build.fingerprint |grep -q vsmart/V620A_open;then
 fi
 
 setprop vendor.display.res_switch_en 1
+
+if getprop ro.bionic.cpu_variant |grep -q kryo300;then
+    resetprop ro.bionic.cpu_variant cortex-a75
+    setprop dalvik.vm.isa.arm64.variant cortex-a75
+    setprop dalvik.vm.isa.arm64.features runtime
+fi
+
